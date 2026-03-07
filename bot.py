@@ -62,5 +62,5 @@ async def echo_handler(message: types.Message):
     await message.answer("Men faqat tugmalar bilan ishlayman 🙂")
 
 # BOTNI ISHGA TUSHIRISH
-if name == "main":
+if __name__ == "__main__":
     executor.start_polling(dp)
