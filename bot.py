@@ -2,16 +2,16 @@ import os
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-from openai import OpenAi
+from openai import OpenAI
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-openai.api_key = OPENAI_API_KEY
+OpenAI.api_key = OPENAI_API_KEY
 
-client = OpenAi(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 # Asosiy tugma
@@ -64,16 +64,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Daraja tanlandi
-if context.user_data.get("waiting_level") and text in ["🟢 Oson", "🟡 O'rtacha", "🔴 Qiyin"]:
+    if context.user_data.get("waiting_level") and text in ["🟢 Oson", "🟡 O'rtacha", "🔴 Qiyin"]:
 
-    subject = context.user_data.get("subject")
-    level = text  # Oson, O'rtacha yoki Qiyin
+        subject = context.user_data.get("subject")
+        level = text  # Oson, O'rtacha yoki Qiyin
 
-    prompt = f"""
-    {subject} fanidan {level} darajadagi bitta test savoli yoz.
-    4 ta variant bo'lsin (A, B, C, D).
-    Oxirida to'g'ri javobni ham yoz.
-    """
+        prompt = f"""
+        {subject} fanidan {level} darajadagi bitta test savoli yoz.
+        4 ta variant bo'lsin (A, B, C, D).
+        Oxirida to'g'ri javobni ham yoz.
+        """
 
     try:
         # OpenAI client (yangi versiya)
@@ -84,7 +84,6 @@ if context.user_data.get("waiting_level") and text in ["🟢 Oson", "🟡 O'rtac
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}]
         )
-
         question = response.choices[0].message.content
 
         await update.message.reply_text(
