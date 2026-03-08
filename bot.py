@@ -64,35 +64,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Daraja tanlandi
-    if context.user_data.get("waiting_level") and text in ["🟢 Oson", "🟡 O'rtacha", "🔴 Qiyin"]:
+if context.user_data.get("waiting_level") and text in ["🟢 Oson", "🟡 O'rtacha", "🔴 Qiyin"]:
 
-        subject = context.user_data.get("subject")
+    subject = context.user_data.get("subject")
+    level = text  # Oson, O'rtacha yoki Qiyin
 
-        prompt = f"""
-        {subject} fanidan {text} darajadagi bitta test savoli yoz.
-        4 ta variant bo'lsin (A, B, C, D).
-        Oxirida to'g'ri javobni ham yoz.
-        """
+    prompt = f"""
+    {subject} fanidan {level} darajadagi bitta test savoli yoz.
+    4 ta variant bo'lsin (A, B, C, D).
+    Oxirida to'g'ri javobni ham yoz.
+    """
 
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
+    try:
+        # OpenAI client (yangi versiya)
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
 
-            question = response.choices[0].message.content
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
 
-            await update.message.reply_text(
-                question,
-                reply_markup=main_markup
-            )
+        question = response.choices[0].message.content
 
-        except Exception as e:
-            await update.message.reply_text(f"Xatolik: {e}")
+        await update.message.reply_text(
+            question,
+            reply_markup=main_markup  # Asosiy tugmalarga qaytaradi
+        )
 
-        context.user_data["waiting_level"] = False
+    except Exception as e:
+        await update.message.reply_text(f"Xatolik: {e}")
+
+    # Flagni o'chiramiz
+    context.user_data["waiting_level"] = False
 
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
