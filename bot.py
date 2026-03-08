@@ -62,30 +62,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Daraja tanlandi
-    if context.user_data.get("waiting_level"):
+    if context.user_data.get("waiting_level") and text in ["🟢 Oson", "🟡 O'rtacha", "🔴 Qiyin"]:
 
         subject = context.user_data.get("subject")
-        level = text
 
         prompt = f"""
-        {subject} fanidan {level} darajadagi bitta test savoli yoz.
+        {subject} fanidan {text} darajadagi bitta test savoli yoz.
         4 ta variant bo'lsin (A, B, C, D).
         Oxirida to'g'ri javobni ham yoz.
         """
 
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
 
-        question = response.choices[0].message.content
+            question = response.choices[0].message.content
 
-        await update.message.reply_text(
-            question,
-            reply_markup=main_markup
-        )
+            await update.message.reply_text(
+                question,
+                reply_markup=main_markup
+            )
+
+        except Exception as e:
+            await update.message.reply_text(f"Xatolik: {e}")
 
         context.user_data["waiting_level"] = False
 
