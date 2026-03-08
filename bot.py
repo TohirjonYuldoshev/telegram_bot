@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import openai
+from openai import OpenAi
 
 load_dotenv()
 
@@ -10,6 +10,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
+
+client = OpenAi(api_key=OPENAI_API_KEY)
 
 
 # Asosiy tugma
@@ -73,7 +75,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
 
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt}
