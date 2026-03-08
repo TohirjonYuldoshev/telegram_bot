@@ -1,4 +1,5 @@
 aiogram==2.25.1
+
 python-telegram-bot==20.7
 openai
 python-dotenv
