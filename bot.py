@@ -1,103 +1,100 @@
-from aiogram import Bot, Dispatcher, executor, types
 import os
-import sqlite3
+from dotenv import load_dotenv
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+import openai
 
-TOKEN = os.getenv("BOT_TOKEN")
+load_dotenv()
 
-ADMIN_ID = 6101353443
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-bot = Bot(token=TOKEN)
-dp = Dispatcher(bot)
+openai.api_key = OPENAI_API_KEY
 
-# DATABASE
-conn = sqlite3.connect("users.dp")
-cursor = conn.cursor()
 
-cursor.execute(""" CREATE TABLE IF NOT EXISTS users(user_id INTEGER) """)
-conn.commit()
+# Asosiy tugma
+main_keyboard = [
+    ["🧠 Test"]
+]
 
-# MENU TUGMALARI
-keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+main_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
 
-btn1 = types.KeyboardButton("📚 Darslar")
-btn2 = types.KeyboardButton("❓ Test")
-btn3 = types.KeyboardButton("ℹ️ Bot haqida")
-btn4 = types.KeyboardButton("📞 Aloqa")
 
-keyboard.add(btn1, btn2)
-keyboard.add(btn3, btn4)
+# Daraja tugmalari
+level_keyboard = [
+    ["🟢 Oson"],
+    ["🟡 O'rtacha"],
+    ["🔴 Qiyin"]
+]
 
-# START
-@dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message):
+level_markup = ReplyKeyboardMarkup(level_keyboard, resize_keyboard=True)
 
-    user_id = message.from_user.id
 
-    cursor.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
-    data = cursor.fetchone()
-
-    if data is None:
-        cursor.execute("INSERT INTO users VALUES (?)", (user_id,))
-        conn.commit()
-
-    await message.answer(
-        "Salom! 👋\nBotga xush kelibsiz!",
-        reply_markup=keyboard
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Salom! 👋\nAI test botga xush kelibsiz.\n\nTest boshlash uchun 🧠 Test tugmasini bosing.",
+        reply_markup=main_markup
     )
 
-# DARSLAR
-@dp.message_handler(lambda message: message.text == "📚 Darslar")
-async def lessons(message: types.Message):
-    await message.answer("📚 Darslar tez orada qo‘shiladi.")
 
-# TEST
-@dp.message_handler(lambda message: message.text == "❓ Test")
-async def test(message: types.Message):
-    await message.answer("❓ Testlar tez orada qo‘shiladi.")
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-# BOT HAQIDA
-@dp.message_handler(lambda message: message.text == "ℹ️ Bot haqida")
-async def about(message: types.Message):
-    await message.answer("🤖 Bu bot Tohirjon tomonidan yaratilgan.")
+    text = update.message.text
 
-# ALOQA
-@dp.message_handler(lambda message: message.text == "📞 Aloqa")
-async def contact(message: types.Message):
-    await message.answer("Telegram: @TohirjoYuldoshev")
+    # Test bosildi
+    if text == "🧠 Test":
+        await update.message.reply_text(
+            "Qaysi fan bo'yicha test kerak? (Masalan: Matematika, Fizika, Ingliz tili)"
+        )
+        context.user_data["waiting_subject"] = True
+        return
 
-# ADMIN - USER COUNT
-@dp.message_handler(commands=["users"])
-async def users_count(message: types.Message):
+    # Fan yozildi
+    if context.user_data.get("waiting_subject"):
+        context.user_data["subject"] = text
+        context.user_data["waiting_subject"] = False
+        context.user_data["waiting_level"] = True
 
-    if message.from_user.id == ADMIN_ID:
-        cursor.execute("SELECT * FROM users")
-        users = cursor.fetchall()
+        await update.message.reply_text(
+            "Darajani tanlang:",
+            reply_markup=level_markup
+        )
+        return
 
-        await message.answer(f"👥 Foydalanuvchilar soni: {len(users)}")
+    # Daraja tanlandi
+    if context.user_data.get("waiting_level"):
 
-# ADMIN - BROADCAST
-@dp.message_handler(commands=["broadcast"])
-async def broadcast(message: types.Message):
+        subject = context.user_data.get("subject")
+        level = text
 
-    if message.from_user.id == ADMIN_ID:
+        prompt = f"""
+        {subject} fanidan {level} darajadagi bitta test savoli yoz.
+        4 ta variant bo'lsin (A, B, C, D).
+        Oxirida to'g'ri javobni ham yoz.
+        """
 
-        text = message.get_args()
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
 
-        cursor.execute("SELECT user_id FROM users")
-        users = cursor.fetchall()
+        question = response.choices[0].message.content
 
-        for user in users:
-            try:
-                await bot.send_message(user[0], text)
-            except:
-                pass
+        await update.message.reply_text(
+            question,
+            reply_markup=main_markup
+        )
 
-        await message.answer("📢 Xabar yuborildi!")
+        context.user_data["waiting_level"] = False
 
-# DEFAULT
-@dp.message_handler()
-async def echo(message: types.Message):
-    await message.answer("Tugmalardan foydalaning 🙂")
 
-if __name__ == "__main__":
-    executor.start_polling(dp)
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+print("Bot ishga tushdi...")
+
+app.run_polling()
