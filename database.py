@@ -6,9 +6,9 @@ cursor = conn.cursor()
 # Jadval yaratish
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS results (
-user_id INTEGER,
-username TEXT,
-score INTEGER
+    user_id INTEGER,
+    username TEXT,
+    score INTEGER
 )
 """)
 
@@ -17,18 +17,15 @@ conn.commit()
 
 # Natija saqlash
 def save_result(user_id, username, score):
-
     cursor.execute(
         "INSERT INTO results VALUES (?, ?, ?)",
         (user_id, username, score)
     )
-
     conn.commit()
 
 
 # Leaderboard
 def get_top():
-
     cursor.execute("""
     SELECT username, MAX(score)
     FROM results
@@ -36,24 +33,20 @@ def get_top():
     ORDER BY MAX(score) DESC
     LIMIT 10
     """)
-
     return cursor.fetchall()
 
 
 # Foydalanuvchi statistikasi
 def get_user_stats(user_id):
-
     cursor.execute(
         "SELECT COUNT(*), MAX(score), AVG(score) FROM results WHERE user_id=?",
         (user_id,)
     )
-
     return cursor.fetchone()
 
 
 # Bot statistikasi
 def get_global_stats():
-
     cursor.execute("SELECT COUNT(DISTINCT user_id) FROM results")
     users = cursor.fetchone()[0]
 
